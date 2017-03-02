@@ -26,8 +26,11 @@ public class AcceptThead extends Thread {
 
 	public void run() {
 		try {
-			boolean goon = true;
-			while (goon) {
+			for(;;){
+				if(clientSocket.getCloseFlag() && clientSocket.getAcceptQueueSize() <= 0){
+					Log.print("客户端[" + clientSocket.socket.getInetAddress() + "]连接已关闭&&已接收的消息已经处理完毕,退出守护");
+					break;
+				}
 				threadProc();
 			}
 		} catch (Exception e) {
@@ -41,20 +44,19 @@ public class AcceptThead extends Thread {
 		if (pack == null) {
 			return;
 		}
-		Log.print("处理报文:" + pack.toString());
 		String requestType = pack.getType();
 		if(PackTools.PACK_TYPE_REGIST_SERVICE.equals(requestType )){
 			Result result = ServiceManager.registService(pack.getServiceName(), pack.getService());
-			// 处理结束返回报文
 			PackageServer sendPack = PackageServer.getServerPackage(pack, result);
 			clientSocket.sendPack(sendPack);
 		}else if(PackTools.PACK_TYPE_CALL_SERVICE.equals(requestType)){
 			Result result = ServiceManager.callService(pack.getServiceName(), pack.getServiceParams());
-			// 处理结束返回报文
 			PackageServer sendPack = PackageServer.getServerPackage(pack, result);
 			clientSocket.sendPack(sendPack);
 		}else if(PackTools.PACK_TYPE_CLOSE_CONNECTION.equals(requestType)){
-			clientSocket.closeAll();
+			PackageServer sendPack = PackageServer.getServerPackage(pack, Result.getSuccessResult());
+			clientSocket.sendPack(sendPack);
+			clientSocket.setCloseFlag(true);
 		}
 	}
 }

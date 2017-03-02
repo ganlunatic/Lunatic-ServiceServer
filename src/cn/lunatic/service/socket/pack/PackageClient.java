@@ -55,6 +55,19 @@ public class PackageClient implements Serializable {
 		this.serviceParams = serviceParams;
 	}
 
+	/**
+	 * 连接服务
+	 * @param reqestNo
+	 * @param type
+	 */
+	public PackageClient(String reqestNo, String type) {
+		super();
+		this.reqestNo = reqestNo;
+		this.type = type;
+	}
+	
+	
+
 
 	public String getReqestNo() {
 		return reqestNo;

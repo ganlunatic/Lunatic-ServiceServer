@@ -23,25 +23,27 @@ public class AcceptThead extends Thread {
 	}
 
 	public void run() {
-		try {
-			boolean goon = true;
-			while (goon) {
-				threadProc();
+		for(;;){
+			if(client.getCloseFlag() && client.getAcceptQueueSize() <= 0){
+				Log.print("[AcceptThead]连接已关闭,不再处理消息,退出守护！");
+				break;
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+			try {
+				threadProc();
+			} catch (Exception e) {
+				Log.print("处理出错",e);
+			}
 		}
 	}
-	
 	
 	public void threadProc() throws Exception {
 		PackageServer pack = client.acceptQueue.take();
 		if (pack == null) {
 			return;
 		}
-		Log.print("客户端接收报文：" + pack.toString());
 		if (PackTools.PACK_TYPE_CLOSE_CONNECTION.equals(pack.getType())){
 			Log.print("[关闭连接]请求处理结果:" + pack.getErrCode() + "(" + pack.getErrMsg() + ")");
+			client.setCloseFlag(true);
 		}else if (PackTools.PACK_TYPE_REGIST_SERVICE.equals(pack.getType())){
 			Log.print("[注册服务]请求处理结果:" + pack.getErrCode() + "(" + pack.getErrMsg() + ")");
 		}else if (PackTools.PACK_TYPE_CALL_SERVICE.equals(pack.getType())){

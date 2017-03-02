@@ -1,8 +1,9 @@
 package cn.lunatic.service.socket.client.thead;
 
-import java.io.DataInputStream;
+import java.io.BufferedInputStream;
 import java.io.IOException;
 
+import cn.lunatic.base.util.Log;
 import cn.lunatic.service.socket.client.Client;
 import cn.lunatic.service.socket.pack.PackTools;
 import cn.lunatic.service.socket.pack.PackageServer;
@@ -17,31 +18,44 @@ public class AcceptPackThead extends Thread {
 
 	private Client client;
 	
-	private DataInputStream inFromServer;
+	private BufferedInputStream inFromServer;
 	
 	public AcceptPackThead(Client client) throws IOException {
 		super();
 		this.client = client;
-		this.inFromServer = new DataInputStream(client.socket.getInputStream());
+		this.inFromServer = new BufferedInputStream(client.socket.getInputStream());
 		start();
 	}
 
 	public void run() {
-		try {
-			boolean goon = true;
-			while (goon) {
-				threadProc();
+		for (;;) {
+			if (client.getCloseFlag()) {
+				Log.print("[AcceptPackThead]连接已关闭,不再接收消息,退出守护！");
+				break;
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+			try {
+				threadProc();
+			}catch (Exception e) {
+				Log.print("接收消息失败", e);
+			}
 		}
 	}
 	
-	
 	public void threadProc() throws Exception {
-		PackageServer pack = PackTools.getPackageServerFromInputStream(inFromServer);
+		PackageServer pack = null;
+		try{
+			pack = PackTools.getPackageServerFromInputStream(inFromServer);
+		}catch(Exception e){
+			if("Connection reset".equals(e.getMessage())){
+				client.setCloseFlag(true);
+			}
+			Log.print("[AcceptPackThead]接收消息失败:" + e.getMessage());
+		}
 		if (pack == null) {
 			return;
+		}
+		if(client.getLogInFlag()){
+			Log.print("In--->" + pack.toString());
 		}
 		client.putAcceptQueue(pack);
 	}

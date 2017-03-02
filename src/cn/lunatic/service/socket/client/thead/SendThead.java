@@ -28,13 +28,16 @@ public class SendThead extends Thread {
 	}
 
 	public void run() {
-		try {
-			boolean goon = true;
-			while (goon) {
-				threadProc();
+		for(;;) {
+			if(client.getCloseFlag() && client.getSendQueueSize() <= 0){
+				Log.print("[SendThead]连接已关闭,不再发送消息,退出守护！");
+				break;
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+			try {
+				threadProc();
+			} catch (Exception e) {
+				Log.print("发送消息出错", e);
+			}
 		}
 	}
 	
@@ -44,7 +47,9 @@ public class SendThead extends Thread {
 		if (pack == null) {
 			return;
 		}
-		Log.print("客户端发送报文：" + pack.toString());
+		if(client.getLogOutFlag()){
+			Log.print("Out-->" + pack.toString());
+		}
 		byte[] sendBytes = PackTools.packClientPackage(pack);
 		outToServer.write(sendBytes);
 		outToServer.flush();

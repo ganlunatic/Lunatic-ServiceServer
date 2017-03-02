@@ -1,6 +1,7 @@
 package cn.lunatic.service.socket.server;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.Socket;
 
 import cn.lunatic.base.util.Log;
@@ -20,9 +21,16 @@ import cn.lunatic.service.socket.server.thead.SendThead;
  * @author gan.feng
  *
  */
-public class ClientSocket {
+public class ClientSocket extends Thread implements Serializable{
+	private static final long serialVersionUID = 1L;
+	
+	private String serialNo;
+	
+	private boolean logInFlag;
+	
+	private boolean logOutFlag;
 	/**
-	 * 当发送队列为空时,是否关闭连接
+	 * true:不在接收消息,只处理未处理完的消息
 	 */
 	public boolean closeFlag = false;
 	
@@ -32,15 +40,53 @@ public class ClientSocket {
 	
 	public ServerPackQueue sendQueue;
 
-	public ClientSocket(Socket socket) throws IOException {
+	public ClientSocket(Socket socket, String serialNo, boolean logInFlag, boolean logOutFlag) throws IOException {
 		super();
 		Log.print(socket.getLocalAddress() + ":" + socket.getPort() + "建立连接");
+		this.serialNo = serialNo;
+		this.sendQueue = new ServerPackQueue();
+		this.acceptQueue = new ClientPackQueue();
+		this.socket = socket;
+		this.logInFlag = logInFlag;
+		this.logOutFlag = logOutFlag;
+		new SendThead(this);
+		new AcceptThead(this);
+		new AcceptPackThead(this);
+		this.start();
+	}
+	
+	public ClientSocket(Socket socket, String serialNo) throws IOException {
+		super();
+		Log.print(socket.getLocalAddress() + ":" + socket.getPort() + "建立连接");
+		this.serialNo = serialNo;
 		this.sendQueue = new ServerPackQueue();
 		this.acceptQueue = new ClientPackQueue();
 		this.socket = socket;
 		new SendThead(this);
 		new AcceptThead(this);
 		new AcceptPackThead(this);
+		this.start();
+	}
+	
+	@Override
+	public void run() {
+		super.run();
+		for(;;){
+			if(closeFlag && getSendQueueSize() <=0 && getAcceptQueueSize() <=0){
+				break;
+			}
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				Log.print("线程休眠错误", e);
+			}
+		}
+		// 关闭连接
+		try {
+			socket.close();
+		} catch (IOException e) {
+			Log.print("关闭Socket连接失败", e);
+		}
 	}
 	
 	/**
@@ -60,33 +106,52 @@ public class ClientSocket {
 	}
 	
 	/**
-	 * 关闭连接(先关闭输入流,如果输出队列还有数据,设置关闭标识为关闭,处理完了关闭)
-	 * @throws IOException
-	 */
-	public void closeAll() throws IOException{
-		socket.getInputStream().close();
-		if(getSendQueueSize() <= 0){
-			socket.getOutputStream().close();
-			socket.close();
-		}else{
-			closeFlag = true;
-		}
-	}
-	
-	/**
-	 * 关闭连接
-	 * @throws IOException
-	 */
-	public void closeConn() throws IOException{
-		Log.print(socket.getLocalAddress() + ":" + socket.getPort() + "关闭连接");
-		this.socket.close();
-	}
-	
-	/**
 	 * 获取当前发送队列的长度
 	 * @return
 	 */
 	public int getSendQueueSize(){
 		return sendQueue.size();
 	}
+
+	/**
+	 * 获取当前接收队列的长度
+	 * @return
+	 */
+	public int getAcceptQueueSize(){
+		return acceptQueue.size();
+	}
+
+	public String getSerialNo() {
+		return serialNo;
+	}
+
+	public void setSerialNo(String serialNo) {
+		this.serialNo = serialNo;
+	}
+
+	public boolean getCloseFlag() {
+		return closeFlag;
+	}
+
+	public void setCloseFlag(boolean closeFlag) {
+		this.closeFlag = closeFlag;
+	}
+
+	public boolean getLogInFlag() {
+		return logInFlag;
+	}
+
+	public void setLogInFlag(boolean logInFlag) {
+		this.logInFlag = logInFlag;
+	}
+
+	public boolean getLogOutFlag() {
+		return logOutFlag;
+	}
+
+	public void setLogOutFlag(boolean logOutFlag) {
+		this.logOutFlag = logOutFlag;
+	}
+	
+	
 }

@@ -41,4 +41,8 @@ public class ClientPackQueue {
 	public PackageClient take() throws Exception {
 		return queue.take();
 	}
+	
+	public int size(){
+		return queue.size();
+	}
 }

@@ -2,7 +2,6 @@ package cn.lunatic.service.socket.server.thead;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 
 import cn.lunatic.base.util.Log;
 import cn.lunatic.service.socket.pack.PackTools;
@@ -29,14 +28,13 @@ public class SendThead extends Thread {
 
 	public void run() {
 		try {
-			boolean goon = true;
-			while (goon) {
-				threadProc();
-				if(clientSocket.getSendQueueSize() <= 0 && clientSocket.closeFlag){
+			for(;;) {
+				if(clientSocket.getCloseFlag() && clientSocket.getSendQueueSize() <= 0){
+					Log.print("客户端[" + clientSocket.socket.getInetAddress() + "]连接已关闭&&待发送的消息已经发送完毕,退出守护");
 					break;
 				}
+				threadProc();
 			}
-			clientSocket.closeConn();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -48,9 +46,10 @@ public class SendThead extends Thread {
 		if (pack == null) {
 			return;
 		}
-		Log.print("发送报文:" + pack.toString());
+		if(clientSocket.getLogOutFlag()){
+			Log.print("Out-->" + pack.toString());
+		}
 		byte[] sendBytes = PackTools.packServerPackage(pack);
-		Log.print("发送字节数组:" + Arrays.toString(sendBytes));
 		outToServer.write(sendBytes);
 		outToServer.flush();
 	}
